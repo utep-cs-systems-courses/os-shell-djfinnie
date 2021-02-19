@@ -1,4 +1,4 @@
-
+#! /usr/bin/env python3
 
 import os, sys
 from os import read, write
