@@ -2,6 +2,8 @@
 
 import os, sys, re
 from myReadline import myReadlines
+global loops
+loops = 0
 
 def interpretCommand(ibuf):
     if ibuf.lower() == "exit":    
@@ -10,7 +12,7 @@ def interpretCommand(ibuf):
 
     lines = ibuf.split()  # tokenize user input
 
-    if lines[0] == "pwd":
+    if lines[0] == "pwd":                  #Print working directory
         os.write(1, (os.getcwd()).encode())
         
     if lines[0] == "cd":
@@ -57,22 +59,32 @@ def interpretCommand(ibuf):
             childPidCode = os.wait() # parent waits for child
 
 def redirect(args):
+    if '|' in args:      #Remove piping symbol
+        args.remove('|')
     if '>' in args:
         os.close(1)       #Close fd 1 - to redirect child's stdout to file
         os.open(args[args.index('>')+1], os.O_WRONLY | os.O_CREAT) # Open file to write to
         os.set_inheritable(1, True)           # makes fd 1 accessable 
         args.remove(args[args.index('>')+1])
+        command = args[args.index('>') -1]
         args.remove('>')
+        args.remove(args[0])
+        
     else:
         os.close(0)         #Close keyboard input-- fd 0
         os.open(args[args.index('<') + 1], os.O_RDONLY) # Open file that we want to read from     
         os.set_inheritable(1, True)              
         args.remove(args[args.index('<')+1])
+        command = args[args.index('<') -1]
         args.remove('<')
+        args.remove(args[0])
+
     for dir in re.split(":", os.environ['PATH']):
-        program = "%s/%s" % (dir, args[0])
+        program = "%s/%s" % (dir, command)
+        if not args:             #If args is empty add the command/file back into the list
+            args += command
         try:
-            os.execve(program, args, os.environ)
+            os.execve(program, args, os.environ)     
         except FileNotFoundError:
             pass
     os.write(2, ("Command failed\n").encode())
@@ -114,7 +126,8 @@ def pipe(args):
         for line in fileinput.input():
             print("From child: <%s>" % line)
 
-        if '<' in args or '>' in args:
+    print("Args before redirect: %s" % args)
+    if '<' in args or '>' in args:
             redirect(args)
 
 def main():
